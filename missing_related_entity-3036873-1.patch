@@ -1,0 +1,236 @@
+diff --git a/modules/redhen_relation/redhen_relation.module b/modules/redhen_relation/redhen_relation.module
+index 689b749..d7b8bf1 100644
+--- a/modules/redhen_relation/redhen_relation.module
++++ b/modules/redhen_relation/redhen_relation.module
+@@ -379,126 +379,123 @@ function redhen_relation_connections_page($entity) {
+       }
+ 
+       foreach ($related_entities as $related_entity) {
+-        $object_label = entity_label($related_entity->entityType(), $related_entity);
+-        $object_uri = entity_uri($related_entity->entityType(), $related_entity);
+-        $author = user_load($relation->uid);
+-        if (strpos($relation->relation_type, 'redhen_') === FALSE) {
+-          $active = t('NA', array(), array('context' => 'redhen_relation'));
+-        }
+-        else {
+-          $items = field_get_items('relation', $relation, REDHEN_RELATION_STATUS_FIELD);
+-          $active = ($items[0]['value']) ? t('Active', array(), array('context' => 'redhen_relation')) : t('Inactive', array(), array('context' => 'redhen_relation'));
+-        }
+-        $related_entity_info = entity_get_info($related_entity->entityType());
+-
+-        // Get roles of the relation.
+-        $relation_role_names = array();
+-        if (isset($relation_wrapper->{REDHEN_RELATION_ROLES_FIELD})) {
+-          $relation_roles = $relation_wrapper->{REDHEN_RELATION_ROLES_FIELD}->value();
+-          foreach ($relation_roles as $relation_role) {
+-            if (!empty($relation_role)) {
+-              $relation_role_names[] = $relation_role->label();
++        if ($related_entity !== false) {
++          $object_label = entity_label($related_entity->entityType(), $related_entity);
++          $object_uri = entity_uri($related_entity->entityType(), $related_entity);
++          $author = user_load($relation->uid);
++          if (strpos($relation->relation_type, 'redhen_') === FALSE) {
++            $active = t('NA', array(), array('context' => 'redhen_relation'));
++          } else {
++            $items = field_get_items('relation', $relation, REDHEN_RELATION_STATUS_FIELD);
++            $active = ($items[0]['value']) ? t('Active', array(), array('context' => 'redhen_relation')) : t('Inactive', array(), array('context' => 'redhen_relation'));
++          }
++          $related_entity_info = entity_get_info($related_entity->entityType());
++
++          // Get roles of the relation.
++          $relation_role_names = array();
++          if (isset($relation_wrapper->{REDHEN_RELATION_ROLES_FIELD})) {
++            $relation_roles = $relation_wrapper->{REDHEN_RELATION_ROLES_FIELD}->value();
++            foreach ($relation_roles as $relation_role) {
++              if (!empty($relation_role)) {
++                $relation_role_names[] = $relation_role->label();
++              }
+             }
++            sort($relation_role_names);
+           }
+-          sort($relation_role_names);
+-        }
+-        $relation_role_names = implode(', ', $relation_role_names);
++          $relation_role_names = implode(', ', $relation_role_names);
+ 
+-        $data = array(
+-          'connection' => array(
+-            'data' => array(
+-              '#markup' => relation_get_type_label($relation, $reversed),
+-            ),
+-          ),
+-          'type' => $related_entity_info['label'],
+-          'name' => array(
+-            'data' => array(
+-              '#type' => 'link',
+-              '#title' => $object_label,
+-              '#href' => $object_uri['path'],
++          $data = array(
++            'connection' => array(
++              'data' => array(
++                '#markup' => relation_get_type_label($relation, $reversed),
++              ),
+             ),
+-          ),
+-          'role' => $relation_role_names,
+-          'active' => $active,
+-          'created' => date('m/d/Y', $relation->created),
+-          'author' => $author->name,
+-        );
+-        $row_classes = array();
+-
+-        // Add primary contact handling for redhen_orgs and contacts.
+-        if ($entity->entityType() == 'redhen_org' && $related_entity->entityType() == 'redhen_contact') {
+-          if ($entity->primary_contact_id !== $related_entity->contact_id) {
+-            $entity_uri = entity_uri('redhen_org', $entity);
+-            $data['primary'] = array(
++            'type' => $related_entity_info['label'],
++            'name' => array(
+               'data' => array(
+                 '#type' => 'link',
+-                '#title' => t('set as primary'),
+-                '#href' => $entity_uri['path'] . '/primary/' . $related_entity->contact_id,
+-                '#options' => array(
+-                  'query' => array($destination),
+-                ),
++                '#title' => $object_label,
++                '#href' => $object_uri['path'],
+               ),
+-            );
++            ),
++            'role' => $relation_role_names,
++            'active' => $active,
++            'created' => date('m/d/Y', $relation->created),
++            'author' => $author->name,
++          );
++          $row_classes = array();
++
++          // Add primary contact handling for redhen_orgs and contacts.
++          if ($entity->entityType() == 'redhen_org' && $related_entity->entityType() == 'redhen_contact') {
++            if ($entity->primary_contact_id !== $related_entity->contact_id) {
++              $entity_uri = entity_uri('redhen_org', $entity);
++              $data['primary'] = array(
++                'data' => array(
++                  '#type' => 'link',
++                  '#title' => t('set as primary'),
++                  '#href' => $entity_uri['path'] . '/primary/' . $related_entity->contact_id,
++                  '#options' => array(
++                    'query' => array($destination),
++                  ),
++                ),
++              );
++            } else {
++              $data['primary'] = t('Primary');
++              $row_classes[] = 'primary_contact';
++            }
++          } elseif ($entity->entityType() == 'redhen_org') {
++            $data[] = t('NA', array(), array('context' => 'redhen_relation'));
+           }
+-          else {
+-            $data['primary'] = t('Primary');
+-            $row_classes[] = 'primary_contact';
++
++          // Build a list of all the accessible operations for the current relation.
++          $ops = array();
++          if (redhen_relation_entity_access('view', $relation)) {
++            $ops['view'] = array(
++              'title' => t('view'),
++              'href' => $relation_uri['path'],
++            );
+           }
+-        }
+-        elseif ($entity->entityType() == 'redhen_org') {
+-          $data[] = t('NA', array(), array('context' => 'redhen_relation'));
+-        }
+ 
+-        // Build a list of all the accessible operations for the current relation.
+-        $ops = array();
+-        if (redhen_relation_entity_access('view', $relation)) {
+-          $ops['view'] = array(
+-            'title' => t('view'),
+-            'href' => $relation_uri['path'],
+-          );
+-        }
++          if (redhen_relation_entity_access('update', $relation)) {
++            $ops['edit'] = array(
++              'title' => t('edit'),
++              'href' => $relation_uri['path'] . '/edit',
++              'query' => $destination,
++            );
++          }
++          if (redhen_relation_entity_access('delete', $relation)) {
++            $ops['delete'] = array(
++              'title' => t('delete'),
++              'href' => $relation_uri['path'] . '/delete',
++              'query' => $destination,
++            );
++          }
++          if (count($ops) > 1) {
++            // Render an unordered list of operations links.
++            $data['operations'] = array(
++              'data' => array(
++                '#theme' => 'links__node_operations',
++                '#links' => $ops,
++                '#attributes' => array('class' => array('links', 'inline')),
++              ),
++            );
++          } elseif (!empty($ops)) {
++            // Render the first and only operation as a link.
++            $link = reset($ops);
++            $data['operations'] = array(
++              'data' => array(
++                '#type' => 'link',
++                '#title' => $link['title'],
++                '#href' => $link['href'],
++                '#options' => (isset($link['query'])) ? array('query' => $link['query']) : array(),
++              ),
++            );
++          } else {
++            unset($header['operations']);
++          }
+ 
+-        if (redhen_relation_entity_access('update', $relation)) {
+-          $ops['edit'] = array(
+-            'title' => t('edit'),
+-            'href' => $relation_uri['path'] . '/edit',
+-            'query' => $destination,
+-          );
++          $rows[$relation_id] = array('data' => $data, 'class' => $row_classes);
+         }
+-        if (redhen_relation_entity_access('delete', $relation)) {
+-          $ops['delete'] = array(
+-            'title' => t('delete'),
+-            'href' => $relation_uri['path'] . '/delete',
+-            'query' => $destination,
+-          );
+-        }
+-        if (count($ops) > 1) {
+-          // Render an unordered list of operations links.
+-          $data['operations'] = array(
+-            'data' => array(
+-              '#theme' => 'links__node_operations',
+-              '#links' => $ops,
+-              '#attributes' => array('class' => array('links', 'inline')),
+-            ),
+-          );
+-        }
+-        elseif (!empty($ops)) {
+-          // Render the first and only operation as a link.
+-          $link = reset($ops);
+-          $data['operations'] = array(
+-            'data' => array(
+-              '#type' => 'link',
+-              '#title' => $link['title'],
+-              '#href' => $link['href'],
+-              '#options' => (isset($link['query'])) ? array('query' => $link['query']) : array(),
+-            ),
+-          );
+-        }
+-        else {
+-          unset($header['operations']);
+-        }
+-
+-        $rows[$relation_id] = array('data' => $data, 'class' => $row_classes);
+       }
+     }
+ 
